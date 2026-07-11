@@ -6,7 +6,6 @@ This means interface fields are constants, not instance variables.
 */
 
 class HTTPRequest{
-    // Trying to incorporate Perfect Immutability this time
     private  String url;
     private  String body;
     private  String method;

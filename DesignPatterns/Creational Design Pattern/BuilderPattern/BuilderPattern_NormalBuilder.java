@@ -4,11 +4,18 @@ class HTTPRequest{
     private String url;
     private String method;
     private Map<String,String> headers;
-    private Map<String, String> queryParameters;
+    private Map<String,String> queryParameters;
     private String body;
     private int timeout;
     
-    private HTTPRequest(){}
+    private HTTPRequest(){
+        url = "";
+        method = "";
+        headers = new HashMap<>();
+        queryParameters = new HashMap<>();
+        body = "";
+        timeout = -1;
+    }
     
     static class HTTPRequestBuilder
     {
@@ -29,15 +36,15 @@ class HTTPRequest{
             return this;
         }
         
-        public HTTPRequestBuilder withHeader(Map<String, String> headers)
+        public HTTPRequestBuilder withHeader(String key, String value)
         {
-            req.headers = headers;
+            req.headers.put(key,value);
             return this;
         }
         
-        public HTTPRequestBuilder withQueryParameters(Map<String, String> queryParameters)
+        public HTTPRequestBuilder withQueryParameters(String key, String value)
         {
-            req.queryParameters = queryParameters;
+            req.queryParameters.put(key,value);
             return this;
         }
         
@@ -56,19 +63,19 @@ class HTTPRequest{
         public HTTPRequest build()
         {
             // Do Validation Logic here if any
-            if(req.url.length()==0)
+            if(req.url != null && req.url.length()==0)
             {
-                return null;
+                throw new RuntimeException("URL cannot be empty");
             }
             
             if(req.method.length()==0)
             {
-                return null;
+                throw new RuntimeException("method cannot be empty");
             }
             
             if(req.timeout == -1)
             {
-                return null;
+                throw new RuntimeException("timeout should be given");
             }
             
             // If all validation passes, then finally return the formed object
@@ -78,13 +85,28 @@ class HTTPRequest{
     
     public void execute()
     {
-        System.out.println("Executing HTTPRequest");
-        System.out.println(this.url);
-        System.out.println(this.method);
-        System.out.println(this.body);
-        System.out.println(this.timeout);
-        System.out.println(this.headers);
-        System.out.println(this.queryParameters);
+        System.out.println("Executing " + method + " request to " + url);
+
+        if (!queryParameters.isEmpty()) {
+            System.out.println("Query Parameters:");
+            for (Map.Entry<String, String> param : queryParameters.entrySet()) {
+                System.out.println("  " + param.getKey() + "=" + param.getValue());
+            }
+        }
+        
+        if (!headers.isEmpty()) {
+        System.out.println("Headers:");
+        for (Map.Entry<String, String> header : headers.entrySet()) {
+            System.out.println("  " + header.getKey() + ": " + header.getValue());
+         }
+        }
+        
+        if (body != null && !body.isEmpty()) {
+            System.out.println("Body: " + body);
+        }
+
+        System.out.println("Timeout: " + timeout + " seconds");
+        System.out.println("Request executed successfully!");
     }
 }
 
@@ -96,7 +118,128 @@ public class Main{
     }
 }
 
-// TYPE OF NESTED CLASS USED PIN BUILDER PATTERN
+
+// But the object attributes are mutable. To follow one of the requirement of Builder Pattern, the attributes of object should be IMMUTABLE. To Ensure IMMUTABILITY the best code is:-
+import java.util.*;
+
+public class HTTPRequest {
+    // 1. All fields are final to guarantee immutability
+    private final String url;
+    private final String method;
+    private final Map<String, String> headers;
+    private final Map<String, String> queryParameters;
+    private final String body;
+    private final int timeout;
+    
+    // 2. Private constructor maps the builder's state to the object
+    private HTTPRequest(HTTPRequestBuilder builder) {
+        this.url = builder.url;
+        this.method = builder.method;
+        this.body = builder.body;
+        this.timeout = builder.timeout;
+        // Make the maps unmodifiable so they can't be changed after creation
+        this.headers = Collections.unmodifiableMap(new HashMap<>(builder.headers));
+        this.queryParameters = Collections.unmodifiableMap(new HashMap<>(builder.queryParameters));
+    }
+    
+    // 3. Builder class holds its OWN state
+    public static class HTTPRequestBuilder {
+        private String url;
+        private String method;
+        private Map<String, String> headers = new HashMap<>();
+        private Map<String, String> queryParameters = new HashMap<>();
+        private String body = "";
+        private int timeout = -1;
+        
+        public HTTPRequestBuilder withURL(String url) {
+            this.url = url;
+            return this;
+        }
+        
+        public HTTPRequestBuilder withMethod(String method) {
+            this.method = method;
+            return this;
+        }
+        
+        public HTTPRequestBuilder withHeader(String key, String value) {
+            this.headers.put(key, value);
+            return this;
+        }
+        
+        public HTTPRequestBuilder withQueryParameter(String key, String value) {
+            this.queryParameters.put(key, value);
+            return this;
+        }
+        
+        public HTTPRequestBuilder withBody(String body) {
+            this.body = body;
+            return this;
+        }
+        
+        public HTTPRequestBuilder withTimeout(int timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+        
+        public HTTPRequest build() {
+            // 4. Fixed Validation Logic
+            if (url == null || url.trim().isEmpty()) {
+                throw new IllegalStateException("URL cannot be empty or null");
+            }
+            if (method == null || method.trim().isEmpty()) {
+                throw new IllegalStateException("Method cannot be empty or null");
+            }
+            if (timeout <= 0) {
+                throw new IllegalStateException("Timeout must be greater than 0");
+            }
+            
+            // 5. Create the immutable object
+            return new HTTPRequest(this);
+        }
+    }
+    
+    public void execute() {
+        System.out.println("Executing " + method + " request to " + url);
+
+        if (!queryParameters.isEmpty()) {
+            System.out.println("Query Parameters:");
+            for (Map.Entry<String, String> param : queryParameters.entrySet()) {
+                System.out.println("  " + param.getKey() + "=" + param.getValue());
+            }
+        }
+        
+        if (!headers.isEmpty()) {
+            System.out.println("Headers:");
+            for (Map.Entry<String, String> header : headers.entrySet()) {
+                System.out.println("  " + header.getKey() + ": " + header.getValue());
+            }
+        }
+        
+        if (body != null && !body.isEmpty()) {
+            System.out.println("Body: " + body);
+        }
+
+        System.out.println("Timeout: " + timeout + " seconds");
+        System.out.println("Request executed successfully!");
+    }
+}
+
+class Main {
+    public static void main(String[] args) {
+        HTTPRequest request = new HTTPRequest.HTTPRequestBuilder()
+            .withURL("https://api.hello.com")
+            .withMethod("POST")
+            .withHeader("Content-Type", "application/json")
+            .withQueryParameter("user", "123")
+            .withBody("{ \"message\": \"hello world\" }")
+            .withTimeout(20)
+            .build();
+            
+        request.execute();
+    }
+}
+
+// TYPE OF NESTED CLASS USED IN BUILDER PATTERN
 /*
 In the Builder pattern, a **Static Nested Class** is almost universally used.
 
@@ -361,110 +504,4 @@ While the example above shows a **Member Inner Class** (defined at the class lev
 | **Member Access** | `static` members only. | All members (`static` and instance). |
 | **Creation Syntax** | `new Outer.Nested()` | `outerObj.new Inner()` |
 | **Memory Implication** | Independent footprint. | Holds a hidden reference to the outer object. |
-*/
-
-
-/*
-The **Builder Design Pattern** is a creational pattern designed to solve the problems associated with creating complex objects.
-
-When an object requires a lot of fields, nested objects, or heavy configuration to initialize, standard object creation methods (like constructors) quickly break down.
-
-Here are the primary issues that the Builder pattern solves:
-
----
-
-## 1. The "Telescoping Constructor" Anti-Pattern
-
-Without the Builder pattern, if a class has optional parameters, developers often write multiple constructors with increasing numbers of arguments (telescoping).
-
-### The Issue:
-
-```java
-// Hard to read, easy to mix up parameters of the same type
-Computer comp = new Computer("Intel i7", "16GB", "1TB SSD", true, false, true);
-
-```
-
-If you want to create a computer with a CPU, RAM, and a graphics card, but *no* extra storage or WiFi card, you are forced to pass `null` or `false` values into a massive constructor. It becomes unreadable, error-prone, and a nightmare to maintain.
-
-### The Builder Solution:
-
-The Builder pattern allows you to write clean, readable code using method chaining. You only call the methods for the parameters you actually care about.
-
-```java
-Computer comp = new ComputerBuilder()
-                    .setCPU("Intel i7")
-                    .setRAM("16GB")
-                    .setGraphicsCard(true)
-                    .build(); // Everything else defaults cleanly
-
-```
-
----
-
-## 2. Preventing "Immutability" Breakdown (The Setter Problem)
-
-To avoid telescoping constructors, a common alternative is to use a default no-argument constructor and then call a long list of setter methods.
-
-### The Issue:
-
-```java
-Computer comp = new Computer();
-comp.setCPU("Intel i7");
-comp.setRAM("16GB");
-// ... Object is in a temporary "mutated" or incomplete state here
-comp.setStorage("1TB");
-
-```
-
-This introduces two massive problems:
-
-* **Incomplete Objects:** The object exists in an invalid, half-baked state while setters are being called. If another thread accesses it mid-setup, it will crash.
-* **Loss of Immutability:** Because you have to expose public `setX()` methods, anyone can alter the object's properties *after* it has been created.
-
-### The Builder Solution:
-
-The Builder collects all the configuration data first. The target object itself remains **immutable** (with `final` fields and no setters). The actual object is only instantiated at the very end when `.build()` is called, ensuring it is 100% valid from its first second of life.
-
----
-
-## 3. Violating the Single Responsibility Principle (SRP)
-
-When a class is responsible for both its **core logic** and the **complex logic of how to build itself**, it takes on too much responsibility.
-
-### The Issue:
-
-If a `User` profile requires parsing complex strings, validating phone numbers, or fetching default profile images during creation, stuffing all that validation and parsing logic inside the `User` class pollutes it.
-
-### The Builder Solution:
-
-The Builder pattern isolates the construction logic into a completely separate class (`UserBuilder`). The core class focuses strictly on what it's supposed to do *after* it is born, while the Builder handles the messy mechanics of birth.
-
----
-
-## 4. Building Different Representations of the Same Product
-
-Sometimes you need to create different variations of the same complex object using the same construction steps.
-
-### The Issue:
-
-If you are building a `Document` object, you might want to build an HTML version, a PDF version, or a Markdown version. Hardcoding this inside a single class results in an explosion of conditional `if/else` statements.
-
-### The Builder Solution:
-
-You can introduce a **Director** class. The Director defines the steps to build something (e.g., `buildHeader()`, `buildBody()`, `buildFooter()`), but you can pass different Builders to it.
-
-* Pass an `HTMLBuilder` $\rightarrow$ get an HTML page.
-* Pass a `PDFBuilder` $\rightarrow$ get a PDF document.
-
----
-
-### Summary Checklist: When should you use it?
-
-* [x] Your class has more than 4 or 5 optional constructor parameters.
-* [x] You want to ensure the resulting object is immutable (`read-only`).
-* [x] The creation process involves complex validation or parsing.
-* [x] You need to create different representations of the same object structure.
-
-Would you like to see a complete code implementation of a thread-safe Builder pattern to see how the inner class structure looks?
 */
